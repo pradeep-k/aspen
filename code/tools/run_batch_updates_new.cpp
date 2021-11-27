@@ -22,6 +22,7 @@ using edge_seq = pair<uintV, uintV>;
 
 void parallel_updates(commandLine& P) {
   string update_fname = P.getOptionValue("-update-file", "updates.dat");
+  size_t batch_size = P.getOptionLongValue("-batch-size", 65536);
 
   auto VG = initialize_treeplus_graph(P);
 
@@ -41,8 +42,7 @@ void parallel_updates(commandLine& P) {
 
   auto update_sizes = pbbs::sequence<size_t>(1);
 
-  size_t batch_size = 65536;
-  size_t loop_count = 32;
+  size_t loop_count = 64;
   update_sizes[0] =  batch_size*loop_count;// 1000000000;
   
   //auto  S1 = pbbs::sequence<versioned_graph<treeplus_graph>::version>(10); 
@@ -50,7 +50,6 @@ void parallel_updates(commandLine& P) {
   
   
   auto update_times = std::vector<double>();
-  size_t n_trials = 3;
 
   size_t start = 0;
   for (size_t us=start; us<update_sizes.size(); us++) {
@@ -108,7 +107,7 @@ void parallel_updates(commandLine& P) {
     //S1[start] = VG.acquire_version();
     // cout << "Finished bs: " << update_sizes[us] << endl;
     cout << "Total insert time: " << (avg_insert) << endl;
-    //cout << "Avg delete: " << (avg_delete / n_trials) << endl << endl;
+    //cout << "Avg delete: " << (avg_delete) << endl << endl;
     auto snap = VG.acquire_version();
     const auto& GA = snap.graph;
     size_t E_total = GA.num_edges();
