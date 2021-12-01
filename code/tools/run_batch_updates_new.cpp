@@ -23,6 +23,7 @@ using edge_seq = pair<uintV, uintV>;
 void parallel_updates(commandLine& P) {
   string update_fname = P.getOptionValue("-update-file", "updates.dat");
   size_t batch_size = P.getOptionLongValue("-batch-size", 65536);
+  size_t loop_count = P.getOptionLongValue("-batch-count", 64);
 
   auto VG = initialize_treeplus_graph(P);
 
@@ -42,7 +43,6 @@ void parallel_updates(commandLine& P) {
 
   auto update_sizes = pbbs::sequence<size_t>(1);
 
-  size_t loop_count = 64;
   update_sizes[0] =  batch_size*loop_count;// 1000000000;
   
   //auto  S1 = pbbs::sequence<versioned_graph<treeplus_graph>::version>(10); 
