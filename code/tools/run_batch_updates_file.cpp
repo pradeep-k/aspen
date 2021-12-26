@@ -54,7 +54,6 @@ void parallel_updates(commandLine& P) {
     string update_fname = P.getOptionValue("-update-file", "updates.dat");
     size_t batch_size = P.getOptionLongValue("-batch-size", 65536);
     size_t loop_count = P.getOptionLongValue("-batch-count", 64);
-    auto update_sizes =  batch_size*loop_count;// 1000000000;
 
     auto VG = initialize_treeplus_graph(P);
 
@@ -72,7 +71,6 @@ void parallel_updates(commandLine& P) {
     //versioned_graph<treeplus_graph>::version* S1 = (versioned_graph<treeplus_graph>::version*)calloc(sizeof(versioned_graph<treeplus_graph>::version), loop_count); 
 
     double avg_insert = 0.0;
-    double avg_delete = 0.0;
 
     size_t updates_to_run = batch_size;
     auto updates = pbbs::sequence<pair_vertex>(updates_to_run);
@@ -87,11 +85,11 @@ void parallel_updates(commandLine& P) {
 
     cout << "Inserting" << endl;
     int offset = 0;
-    for (int j = 0; j < loop_count; j++) {
-        timer st; 
-        st.start();
+    bool _break = false;
+    timer st; 
+    do {
         // get data from file
-        for (auto i = 0; i < batch_size; ++i) {
+        for (size_t i = 0; i < batch_size; ++i) {
             if (get_next_text_line(file, edge)) {
 				if (edge.src < 0) {//deletion case
 					deletes[i] = {-edge.src, edge.dst};
@@ -101,11 +99,13 @@ void parallel_updates(commandLine& P) {
 					++updates_count;
 				}
             } else {
+                _break = true;
                 break;
             }
         }
 
         //insert it
+        st.start();
         VG.insert_edges_batch(updates_count, updates.begin(), false, true, nn, false);
         if (deletes_count != 0) {
 			VG.delete_edges_batch(deletes_count, deletes.begin(), false, true, nn, false);
@@ -117,7 +117,7 @@ void parallel_updates(commandLine& P) {
         offset += batch_size;
 		updates_count = 0;
 		deletes_count = 0;
-    }
+    } while(_break == false);
 
     //S1[start] = VG.acquire_version();
     // cout << "Finished bs: " << update_sizes[us] << endl;

@@ -67,8 +67,6 @@ void parallel_updates(commandLine& P) {
     string update_fname = P.getOptionValue("-update-file", "updates.dat");
     size_t batch_size = P.getOptionLongValue("-batch-size", 65536);
     size_t loop_count = P.getOptionLongValue("-batch-count", 64);
-    auto update_sizes =  batch_size*loop_count;// 1000000000;
-
     auto VG = initialize_treeplus_graph(P);
 
     cout << "calling acquire_version" << endl;
@@ -84,10 +82,7 @@ void parallel_updates(commandLine& P) {
     //auto  S1 = pbbs::sequence<versioned_graph<treeplus_graph>::version>(10); 
     //versioned_graph<treeplus_graph>::version* S1 = (versioned_graph<treeplus_graph>::version*)calloc(sizeof(versioned_graph<treeplus_graph>::version), loop_count); 
 
-    double avg_insert = 0.0;
-    double avg_delete = 0.0;
 
-    size_t updates_to_run = update_sizes;
     auto updates = pbbs::sequence<pair_vertex>(batch_size);
     auto deletes = pbbs::sequence<pair_vertex>(batch_size);
     int updates_count = 0;
@@ -106,12 +101,14 @@ void parallel_updates(commandLine& P) {
 	}
 
     cout << "Inserting" << endl;
+    
+	timer st; 
+    st.start();
     int offset = 0;
+    int loops = 0;
     size_t min_batch = batch_size;
-     
+ 
 	while (edge_count != 0) {
-		timer st; 
-        st.start();
 		min_batch = std::min(batch_size, edge_count);
 		edge_count -= min_batch;
         // get data from file
@@ -129,23 +126,23 @@ void parallel_updates(commandLine& P) {
         if (deletes_count != 0) {
             VG.delete_edges_batch(deletes_count, deletes.begin(), false, true, nn, false);
         }
-		double batch_time = st.stop();
 
-        cout << "batch time = " << batch_time << endl << endl;
-        avg_insert += batch_time;
+        // cout << "batch time = " << batch_time << endl << endl;
         offset += min_batch;
+        ++loops;
 		updates_count = 0;
 		deletes_count = 0;
     }
 
+	double insert_time = st.stop();
     //S1[start] = VG.acquire_version();
-    // cout << "Finished bs: " << update_sizes[us] << endl;
-    cout << "Total insert time: " << (avg_insert) << endl;
+    cout << "Total insert time: " << insert_time << endl;
     //cout << "Avg delete: " << (avg_delete) << endl << endl;
     auto snap = VG.acquire_version();
     const auto& GA1 = snap.graph;
     size_t E_total = GA1.num_edges();
-    cout << " E = " << E_total << endl << endl;
+    cout << " E = " << E_total << endl 
+         << "batch count = "  << loops << endl;
 }
 
 int main(int argc, char** argv) {

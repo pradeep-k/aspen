@@ -64,7 +64,7 @@ pbbs::sequence<char> readStringFromFile(const char* fileName) {
   return bytes;
 }
 
-auto read_unweighted_graph(const char* fname, bool is_symmetric, bool mmap=false) {
+auto read_unweighted_graph1(const char* fname, bool is_symmetric, bool mmap=false) {
   pbbs::sequence<char*> tokens;
   pbbs::sequence<char> S;
   if (mmap) {
@@ -99,6 +99,47 @@ auto read_unweighted_graph(const char* fname, bool is_symmetric, bool mmap=false
   parallel_for(0, m, [&] (size_t i) {
     edges[i] = atol(tokens[i+n+3]);
   });
+
+  S.clear();
+  tokens.clear();
+  return make_tuple(n, m, offsets, edges);
+}
+
+auto read_unweighted_graph(const char* fname, bool is_symmetric, bool mmap=false) {
+  pbbs::sequence<char*> tokens;
+  pbbs::sequence<char> S;
+  if (mmap) {
+    auto SS = mmapStringFromFile(fname);
+    char *bytes = pbbs::new_array_no_init<char>(SS.second);
+    // Cannot mutate the graph unless we copy.
+    parallel_for(0, SS.second, [&] (size_t i) {
+      bytes[i] = SS.first[i];
+    });
+    if (munmap(SS.first, SS.second) == -1) {
+      perror("munmap");
+      exit(-1);
+    }
+    S = pbbs::sequence<char>(bytes, SS.second);
+  } else {
+    S = readStringFromFile(fname);
+  }
+  tokens = pbbs::tokenize(S, [] (const char c) { return pbbs::is_space(c); });
+  assert(tokens[0] == (string) "AdjacencyGraph");
+
+  size_t len = tokens.size() - 1;
+  size_t n = atol(tokens[1]);
+  size_t m = atol(tokens[2]);
+
+  cout << "n = " << n << " m = " << m << endl;
+  //assert(len == n + m + 2);
+
+  uintE* offsets = pbbs::new_array_no_init<uintE>(n);
+  uintV* edges = 0;//pbbs::new_array_no_init<uintV>(m);
+
+  parallel_for(0, n, [&] (size_t i) { offsets[i] = 0/*atol(tokens[i + 3])*/; });
+  /*parallel_for(0, m, [&] (size_t i) {
+    edges[i] = atol(tokens[i+n+3]);
+  });*/
 
   S.clear();
   tokens.clear();
