@@ -143,6 +143,18 @@ struct traversable_graph : private graph {
       return vertex_subset(vs.n);
     }
   }
+  
+  inline size_t edge_map_one(uintV v, edge_struct & EL, uintV* nghs, const flags fl = 0) {
+    size_t deg = EL.size();
+    // map over the edgelist.
+    if (deg > 0) {
+        auto map_f = [&] (const uintV& ngh, size_t ind) {
+            nghs[ind] = ngh;
+        };
+        EL.map_elms(v, map_f);
+    }
+    return deg;
+  }
 
   template <class F>
   auto edge_map_sparse(pbbs::sequence<vtx> const &vertices, vertex_subset& vs, F f, const flags fl = 0) {

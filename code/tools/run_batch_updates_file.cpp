@@ -124,9 +124,17 @@ void parallel_updates(commandLine& P) {
     cout << "Total insert time: " << (avg_insert) << endl;
     //cout << "Avg delete: " << (avg_delete) << endl << endl;
     auto snap = VG.acquire_version();
-    const auto& GA1 = snap.graph;
+    auto& GA1 = snap.graph;
     size_t E_total = GA1.num_edges();
     cout << " E = " << E_total << endl << endl;
+
+    auto vtxs = GA1.fetch_all_vertices();
+    
+    int degree = vtxs[0].size();
+    uintV*  ptr = (uintV*)malloc(sizeof(uintV)*degree);
+    GA1.edge_map_one(0, vtxs[0], ptr);
+
+    cout << ptr[0] << endl;
 }
 
 int main(int argc, char** argv) {
