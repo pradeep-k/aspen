@@ -144,7 +144,7 @@ struct traversable_graph : private graph {
     }
   }
   
-  inline size_t edge_map_one(uintV v, edge_struct & EL, uintV* nghs, const flags fl = 0) {
+  inline size_t edge_map_one(uintV v, edge_struct & EL, uintV* nghs) {
     size_t deg = EL.size();
     // map over the edgelist.
     if (deg > 0) {
@@ -362,6 +362,16 @@ struct traversable_graph : private graph {
 //    t.next("fetch time");
 //    cout << "fetched" << endl;
     return vtxs;
+  }
+
+  void get_all_vertices(pbbs::sequence<edge_struct>& vtxs) {
+    timer t; t.start();
+    auto map_f = [&] (const vertex_entry& entry, size_t ind) {
+      const uintV& v = entry.first;
+      const auto& el = entry.second;
+      vtxs[v] = el;
+    };
+    G::map_vertices(map_f);
   }
 
   traversable_graph insert_edges_batch(size_t m, tuple<uintV, uintV>* edges, bool sorted=false, bool remove_dups=false, size_t nn=std::numeric_limits<size_t>::max(), bool run_seq=false) const {
