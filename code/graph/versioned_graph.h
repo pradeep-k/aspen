@@ -42,11 +42,13 @@ struct versioned_graph {
   struct version {
     ts timestamp;
     T* table_entry;
+    int64_t snap_id;
     snapshot_graph graph;
     version(ts _timestamp, T* _table_entry, snapshot_graph&& _graph) :
       timestamp(_timestamp), table_entry(_table_entry) {
       graph.set_root(_graph.get_root());
       _graph.clear_root();
+      snap_id = 0;
     }
   };
 
@@ -141,6 +143,68 @@ struct versioned_graph {
     T* table_entry = S.table_entry;
     auto root = S.graph.get_root();
     S.graph.clear_root(); // relinquish ownership
+
+    uint64_t* ref_ct_loc = &(get<0>(get<1>(*table_entry)));
+    if (refct_utils::get_rfct(pbbs::fetch_and_add(ref_ct_loc, -1)) == 2 &&
+        timestamp != latest_timestamp()) {
+      // read again and try to free.
+      uint64_t cur_val = *ref_ct_loc;
+      if (refct_utils::get_rfct(cur_val) == 1) {
+
+        if (pbbs::atomic_compare_and_swap(ref_ct_loc, cur_val, cur_val-1)) {
+          // no longer possible for new readers to acquire
+          if (root) { // might be an empty graph
+
+            size_t ref_cnt = root->ref_cnt;
+            if (ref_cnt != 1) {
+              cout << "issues " << root->ref_cnt << endl;
+              assert(root->ref_cnt == 1);
+              exit(0);
+            }
+            bool ret = Node_GC::decrement_recursive(root); // finish it off
+            assert(ret);
+          }
+
+          typename table::T first_empty = make_tuple(timestamp, make_tuple(0, nullptr));
+          *table_entry = first_empty;
+          typename table::T empty = make_tuple(tombstone, make_tuple(0, nullptr));
+          *table_entry = empty;
+        }
+      }
+    }
+  }
+  
+  // Lock-free, but not wait-free
+  version* acquire_version1() {
+    while (true) {
+      size_t latest_ts = latest_timestamp();
+      tuple<T&, bool> ref_and_valid = live_versions.find(latest_ts);
+      T& table_ref = get<0>(ref_and_valid); bool valid = get<1>(ref_and_valid);
+      if (valid) {
+        while(true) {
+          // can't be max_ts in a probe sequence
+          if (get<0>(table_ref) == tombstone) break;
+          uint64_t refct_and_ts = get<0>(get<1>(table_ref));
+          uint64_t next_value = refct_and_ts + 1;
+          size_t ref_ct_before = refct_utils::get_rfct(refct_and_ts);
+          size_t ts = get<0>(table_ref);
+          if (ref_ct_before > 0) {
+            if (pbbs::atomic_compare_and_swap(&get<0>(get<1>(table_ref)), refct_and_ts, next_value)) {
+              return new version(ts, &table_ref, std::move(snapshot_graph(get<1>(get<1>(table_ref)))));
+            }
+          } else { // refct == 0
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  void release_version1(version* S) {
+    ts timestamp = S->timestamp;
+    T* table_entry = S->table_entry;
+    auto root = S->graph.get_root();
+    S->graph.clear_root(); // relinquish ownership
 
     uint64_t* ref_ct_loc = &(get<0>(get<1>(*table_entry)));
     if (refct_utils::get_rfct(pbbs::fetch_and_add(ref_ct_loc, -1)) == 2 &&
