@@ -42,13 +42,11 @@ struct versioned_graph {
   struct version {
     ts timestamp;
     T* table_entry;
-    int64_t snap_id;
     snapshot_graph graph;
     version(ts _timestamp, T* _table_entry, snapshot_graph&& _graph) :
       timestamp(_timestamp), table_entry(_table_entry) {
       graph.set_root(_graph.get_root());
       _graph.clear_root();
-      snap_id = 0;
     }
   };
 
