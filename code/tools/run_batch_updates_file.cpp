@@ -90,7 +90,7 @@ void parallel_updates(commandLine& P) {
     do {
         // get data from file
         for (size_t i = 0; i < batch_size; ++i) {
-            if (get_next_text_line(file, edge)) {
+            if (get_next_binary_line(file, edge)) {
 				if (edge.src < 0) {//deletion case
 					deletes[i] = {-edge.src, edge.dst};
 					++deletes_count;
