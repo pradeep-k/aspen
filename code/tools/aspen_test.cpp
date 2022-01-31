@@ -197,7 +197,7 @@ int main(int argc, char** argv)
     
     // Run analytics in separte thread. If adjacency store is non-snapshot, do indexing and analytics in seq.
     index_t slide_sz = BATCH_SIZE;
-    gview_t* sstreamh = reg_sstream_view(ubatch, v_count, stream_bfs_del<dst_id_t>, C_THREAD, slide_sz);
+    gview_t* sstreamh = reg_sstream_view(ubatch, v_count, kickstarter_bfs<dst_id_t>, C_THREAD, slide_sz);
     
     //perform micro batching here using ubatch pointer
     int64_t flags = 0; 
