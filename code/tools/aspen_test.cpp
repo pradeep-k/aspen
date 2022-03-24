@@ -135,7 +135,7 @@ status_t create_adjacency_snapshot(ubatch_t* ubatch)
     ubatch->update_marker();
     //cout << endv->id << endl << endl;
     double end = mywtime();
-    cout << endv->id << ":" << end - start << endl;
+    //cout << endv->id << ":" << end - start << endl;
 
 
     //if analytics is not running, let us remove it. 
@@ -164,11 +164,13 @@ int main(int argc, char** argv)
 {
     commandLine P(argc, argv, "./test_graph [-f file -m (mmap) <testid>]");
     string idir = P.getOptionValue("-update-dir", "./data/");
-    BATCH_SIZE = P.getOptionLongValue("-batch-size", 65536);
+    long nBATCH_SIZE = P.getOptionLongValue("-batch-size", 16);
+    BATCH_SIZE = (1L << nBATCH_SIZE);
     BATCH_MASK = BATCH_SIZE - 1;
     THD_COUNT = P.getOptionLongValue("-thread-count", 9);
     set_num_workers(THD_COUNT);
     _source = P.getOptionLongValue("-source", 1);
+    _arg = P.getOptionLongValue("-arg", 1);
     
     //Initialize the system. 
     //Return ubatch pointer here.
@@ -179,7 +181,7 @@ int main(int argc, char** argv)
     VG.release_version(std::move(S));
 
     ubatch_t* ubatch = new ubatch_t(sizeof(edge_t),  1);
-    ubatch->alloc_edgelog(20); // 1 Million edges
+    ubatch->alloc_edgelog(nBATCH_SIZE + 1); // 1 Million edges
     ubatch->reg_archiving();
     updates = (pair_vertex*)malloc(sizeof(pair_vertex)*2*BATCH_SIZE);
     deletes = (pair_vertex*)malloc(sizeof(pair_vertex)*2*BATCH_SIZE);
@@ -191,13 +193,15 @@ int main(int argc, char** argv)
     //If system support adjacency store snapshot, create thread for index creation
     INIT_LIST_HEAD(&snapshot_list);
     pthread_t thread;
-    if (0 != pthread_create(&thread, 0, snap_func, ubatch)) {
-        assert(0);
-    }
+    
+    if (0 != pthread_create(&thread, 0, snap_func, ubatch)) { assert(0); }
     
     // Run analytics in separte thread. If adjacency store is non-snapshot, do indexing and analytics in seq.
     index_t slide_sz = BATCH_SIZE;
     gview_t* sstreamh = reg_sstream_view(ubatch, v_count, kickstarter_bfs<dst_id_t>, C_THREAD, slide_sz);
+    
+    
+    //if (0 != pthread_create(&thread, 0, test_ingestion, ubatch)) { assert(0); }
     
     //perform micro batching here using ubatch pointer
     int64_t flags = 0; 

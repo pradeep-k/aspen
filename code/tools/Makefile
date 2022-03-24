@@ -16,9 +16,9 @@ HGFLAGS = -DHOMEGROWN -pthread
 CILKFLAGS = -DCILK -fcilkplus
 
 #g++ -DB32  -march=native typekv.cpp aspen_test.cpp onestr.cpp -Iinclude/ -I/home/pkumar/src/aspen/ -fopenmp -ltbb -o gbench
-all: aspen_gbench
-aspen_gbench: aspen_test.cpp Makefile
-	g++ -DB32  $(CFLAGS) $(CILKFLAGS) aspen_test.cpp onestr.cpp -Iinclude/ -I/home/pkumar/src/aspen/ -fopenmp -ltbb -o aspen_gbench
+all: gbench
+gbench: aspen_test.cpp Makefile
+	g++ -DB32  $(CFLAGS) $(CILKFLAGS) aspen_test.cpp onestr.cpp -Iinclude/ -I/home/pkumar/src/aspen/ -fopenmp -ltbb -o gbench
 
 clean:
-	rm aspen_gbench
+	rm gbench

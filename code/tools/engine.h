@@ -288,7 +288,7 @@ public:
       }
     }
 
-    traditionalIncrementalComputation();
+    //traditionalIncrementalComputation();
     //printOutput();
   }
 

@@ -23,7 +23,7 @@ void* kickstarter_bfs(void* viewh)
         end = mywtime();
         engine.deltaCompute();
         end1 = mywtime();
-        cout << sstreamh->update_count <<" " << end - start << "::" << end1 - end << endl;
+        //cout << sstreamh->update_count <<" " << end - start << "::" << end1 - end << endl;
         //engine.printOutput();
         start = mywtime();
     }
@@ -42,9 +42,6 @@ void* kickstarter_bfs_serial(void* viewh)
     engine.init();
     engine.initialCompute(); 
     
-    index_t batch_size = residue;
-    index_t marker = 0; 
-
     int update_count = 0;
     status_t ret = eOK; 
     double start, end, end1, end2;
@@ -66,12 +63,51 @@ void* kickstarter_bfs_serial(void* viewh)
         
         //cout << "BFS Time at Batch " << update_count << " = " << end - start << endl;
         cout << update_count
-             << ":" << sstreamh->get_snapmarker()
+             //<< ":" << sstreamh->get_snapmarker()
              << ":" << end - start << ":" << end1 - end  
              << ":" << end2 - end1 << endl;
     } 
     double endn = mywtime();
     engine.printOutput();
+    cout << "update_count = " << update_count << "Time = "<< endn - startn << endl;
+    return 0;
+}
+
+void* test_ingestion(void* viewh)
+{
+    ubatch_t* ubatch = (ubatch_t*)(viewh);
+    
+    adj_snap_t* S = 0;
+    int update_count = 0;
+    status_t ret = eOK; 
+    double start, end, end1, end2;
+    
+    double startn = mywtime();
+    while (true) {
+        start = mywtime();
+        ret = create_adjacency_snapshot(ubatch);
+        //free the snapshot
+        if(S == 0) {
+            S = (adj_snap_t*)snapshot_list.get_prev();//the beginning
+            S->ref_count += 1;//first snapshot is special.
+        } else {
+            adj_snap_t* it = S;
+            S = S->get_prev();//S++
+            S->ref_count +=2;
+            it->ref_count -= 2;
+        }
+        end = mywtime();
+        
+        if (ret == eEndBatch) break;
+        ++update_count;
+        
+        cout << update_count
+             << ":" << end - start 
+             //<< ":" << end1 - end  
+             //<< ":" << end2 - end1 
+             << endl;
+    } 
+    double endn = mywtime();
     cout << "update_count = " << update_count << "Time = "<< endn - startn << endl;
     return 0;
 }
